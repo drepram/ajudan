@@ -32,6 +32,19 @@ export function createStore({ messages, state, groupIds, retentionDays }) {
         .sort((a, b) => a.timestamp - b.timestamp || a.messageId.localeCompare(b.messageId));
     },
 
+    async getSummary() {
+      const entries = await messages.entries();
+      let latestTimestamp;
+      for (const { value } of entries) {
+        const timestamp = value?.timestamp;
+        if (Number.isSafeInteger(timestamp) && timestamp > 0 &&
+            Number.isFinite(new Date(timestamp).getTime()) && timestamp > (latestTimestamp ?? 0)) {
+          latestTimestamp = timestamp;
+        }
+      }
+      return { count: entries.length, latestTimestamp };
+    },
+
     async getWatermark() {
       const value = await state.lookup(WATERMARK_KEY);
       return Number.isSafeInteger(value?.timestamp) ? value.timestamp : undefined;

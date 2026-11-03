@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "exports": "./index.js",
+  "openclaw": {
+    "extensions": ["./index.js"]
+  },
   "engines": {
     "node": ">=24.22.1"
   },

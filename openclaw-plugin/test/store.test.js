@@ -47,6 +47,23 @@ test("records only valid messages once and reads a sorted group window", async (
     { ...first, messageId: "m-1", timestamp: 1000, text: "first" },
     first,
   ]);
+  assert.deepEqual(await store.getSummary(), { count: 2, latestTimestamp: 2000 });
+});
+
+test("summarizes an empty store", async () => {
+  const store = createStore({ messages: keyedStore(), state: keyedStore(), groupIds: [], retentionDays: 7 });
+  assert.deepEqual(await store.getSummary(), { count: 0, latestTimestamp: undefined });
+});
+
+test("ignores invalid timestamps when finding the latest stored message", async () => {
+  const messages = keyedStore();
+  const store = createStore({ messages, state: keyedStore(), groupIds: ["ops@g.us"], retentionDays: 7 });
+  await store.record({ groupId: "ops@g.us", messageId: "old", senderId: "user-1", timestamp: 1000, text: "old", replyTo: null });
+  await store.record({ groupId: "ops@g.us", messageId: "new", senderId: "user-1", timestamp: 3000, text: "new", replyTo: null });
+  messages.rows.set("legacy", { timestamp: "invalid" });
+  messages.rows.set("out-of-range", { timestamp: Number.MAX_SAFE_INTEGER });
+
+  assert.deepEqual(await store.getSummary(), { count: 4, latestTimestamp: 3000 });
 });
 
 test("keeps the last successful digest watermark across store instances", async () => {

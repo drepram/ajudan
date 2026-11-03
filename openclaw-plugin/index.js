@@ -27,7 +27,7 @@ export function register(api) {
   const state = api.runtime.state.openKeyedStore({ namespace: "state", retention: "retained" });
   const store = createStore({ messages, state, groupIds, retentionDays });
 
-  api.registerHook("message_received", async (event, context) => {
+  api.on("message_received", async (event, context) => {
     if (context.channelId !== "whatsapp" || !groupIds.includes(event.from) || !event.messageId) return;
     const timestamp = Number(event.timestamp);
     if (!Number.isSafeInteger(timestamp) || timestamp <= 0) return;
@@ -48,7 +48,16 @@ export function register(api) {
   api.registerService({
     id: "ajudan-digest",
     apiVersion: 2,
-    start({ scheduler }) {
+    async start({ scheduler }) {
+      try {
+        const summary = await store.getSummary();
+        const latestTimestamp = summary.latestTimestamp === undefined
+          ? "none"
+          : new Date(summary.latestTimestamp).toISOString();
+        api.logger.info(`Ajudan capture status: storedMessages=${summary.count} latestTimestamp=${latestTimestamp}`);
+      } catch {
+        api.logger.warn("Ajudan capture status unavailable");
+      }
       if (config.inferenceEnabled !== true) {
         api.logger.info("Ajudan inference disabled; message collection remains active");
         return;
