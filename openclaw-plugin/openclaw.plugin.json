@@ -1,0 +1,18 @@
+{
+  "id": "ajudan",
+  "name": "Ajudan",
+  "description": "Locally collect allowlisted WhatsApp group messages and optionally deliver private operational digests.",
+  "version": "0.1.0",
+  "main": "index.js",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "groupIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+      "retentionDays": { "type": "integer", "minimum": 1, "maximum": 365 },
+      "inferenceEnabled": { "type": "boolean", "default": false },
+      "model": { "type": "string" },
+      "recipient": { "type": "string" }
+    }
+  }
+}

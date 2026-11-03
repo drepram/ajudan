@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+token.txt
+*auth*
+*credentials*
+*.sqlite
+*.db
+.openclaw/

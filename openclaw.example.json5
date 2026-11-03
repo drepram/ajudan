@@ -1,0 +1,38 @@
+{
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": ["YOUR_OWNER_NUMBER"],
+      "groupPolicy": "allowlist",
+      "groupAllowFrom": ["*"],
+      "pluginHooks": { "messageReceived": true },
+      "groups": {}
+    }
+  },
+  "messages": {
+    "groupChat": {
+      "mentionPatterns": []
+    }
+  },
+  "cron": {
+    "enabled": true
+  },
+  "plugins": {
+    "load": {
+      "paths": ["/path/to/ajudan/openclaw-plugin"]
+    },
+    "entries": {
+      "ajudan": {
+        "enabled": true,
+        "config": {
+          "groupIds": [],
+          "retentionDays": 30,
+          "inferenceEnabled": false,
+          "model": "openrouter/nvidia/nemotron-3.5-lightning:free",
+          "recipient": ""
+        }
+      }
+    }
+  }
+}
