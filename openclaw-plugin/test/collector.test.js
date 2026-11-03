@@ -36,15 +36,31 @@ test("collects only allowlisted WhatsApp group events and registers no collectio
   register(api);
   const received = hooks.get("message_received");
   for (const [event, context] of [
-    [{ from: "ops@g.us", messageId: "1", senderId: "u1", timestamp: 1000, content: "kept" }, { channelId: "whatsapp" }],
-    [{ from: "other@g.us", messageId: "2", senderId: "u1", timestamp: 1000, content: "ignored" }, { channelId: "whatsapp" }],
-    [{ from: "ops@g.us", messageId: "3", senderId: "u1", timestamp: 1000, content: "ignored" }, { channelId: "telegram" }],
+    [{ from: "u1", threadId: "ops@g.us", messageId: "1", senderId: "u1", timestamp: 1000, content: "kept" }, { channelId: "whatsapp" }],
+    [{ from: "u1", threadId: "other@g.us", messageId: "2", senderId: "u1", timestamp: 1000, content: "ignored" }, { channelId: "whatsapp" }],
+    [{ from: "u1", threadId: "ops@g.us", messageId: "3", senderId: "u1", timestamp: 1000, content: "ignored" }, { channelId: "telegram" }],
   ]) await received(event, context);
 
   assert.equal(services.length, 1);
   let schedules = 0;
   services[0].start({ scheduler: { schedule() { schedules++; } } });
   assert.equal(schedules, 0);
+});
+
+test("matches the allowlisted group using the typed event threadId", async () => {
+  const { api, hooks, services, logs } = apiFor({ groupIds: ["ops@g.us"], inferenceEnabled: false });
+  register(api);
+  await hooks.get("message_received")({
+    from: "sender@s.whatsapp.net",
+    threadId: "ops@g.us",
+    messageId: "m1",
+    senderId: "sender@s.whatsapp.net",
+    timestamp: 1700000000000,
+    content: "test",
+  }, { channelId: "whatsapp" });
+  await services[0].start({ scheduler: { schedule() { assert.fail("inference should remain disabled"); } } });
+
+  assert.match(logs[0], /storedMessages=1/);
 });
 
 test("empty or wildcard group configuration registers no capture hook", () => {
@@ -59,7 +75,8 @@ test("logs only stored message count and latest timestamp on service startup", a
   const { api, hooks, services, logs } = apiFor({ groupIds: ["ops@g.us"], inferenceEnabled: false });
   register(api);
   await hooks.get("message_received")({
-    from: "ops@g.us",
+    from: "sender@s.whatsapp.net",
+    threadId: "ops@g.us",
     messageId: "private-message-id",
     senderId: "private-sender-id",
     timestamp: 1700000000000,

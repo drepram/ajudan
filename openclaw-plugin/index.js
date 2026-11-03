@@ -28,12 +28,12 @@ export function register(api) {
   const store = createStore({ messages, state, groupIds, retentionDays });
 
   api.on("message_received", async (event, context) => {
-    if (context.channelId !== "whatsapp" || !groupIds.includes(event.from) || !event.messageId) return;
+    if (context.channelId !== "whatsapp" || typeof event.threadId !== "string" || !groupIds.includes(event.threadId) || !event.messageId) return;
     const timestamp = Number(event.timestamp);
     if (!Number.isSafeInteger(timestamp) || timestamp <= 0) return;
     try {
       await store.record({
-        groupId: event.from,
+        groupId: event.threadId,
         messageId: event.messageId,
         senderId: event.senderId,
         timestamp,
