@@ -60,7 +60,22 @@ test("matches the allowlisted group using the typed event threadId", async () =>
   }, { channelId: "whatsapp" });
   await services[0].start({ scheduler: { schedule() { assert.fail("inference should remain disabled"); } } });
 
-  assert.match(logs[0], /storedMessages=1/);
+  assert.match(logs.find((line) => line.startsWith("Ajudan capture status:")), /storedMessages=1/);
+});
+
+test("logs only allowlist-match and field-validity diagnostics for WhatsApp events", async () => {
+  const { api, hooks, logs } = apiFor({ groupIds: ["ops@g.us"] });
+  register(api);
+  await hooks.get("message_received")({
+    from: "sender@s.whatsapp.net",
+    messageId: "m1",
+    senderId: "sender@s.whatsapp.net",
+    timestamp: 1700000000000,
+    content: "private message body",
+  }, { channelId: "whatsapp", conversationId: "ops@g.us" });
+
+  assert.match(logs[0], /channelMatch=true fromMatch=false threadIdType=undefined threadIdMatch=false conversationIdMatch=true messageIdPresent=true timestampValid=true senderIdPresent=true/);
+  assert.doesNotMatch(logs[0], /private message body|ops@g\.us|sender@s\.whatsapp\.net|m1/);
 });
 
 test("empty or wildcard group configuration registers no capture hook", () => {
@@ -85,7 +100,7 @@ test("logs only stored message count and latest timestamp on service startup", a
 
   await services[0].start({ scheduler: { schedule() { assert.fail("inference should remain disabled"); } } });
 
-  assert.equal(logs[0], "Ajudan capture status: storedMessages=1 latestTimestamp=2023-11-14T22:13:20.000Z");
+  assert.equal(logs.find((line) => line.startsWith("Ajudan capture status:")), "Ajudan capture status: storedMessages=1 latestTimestamp=2023-11-14T22:13:20.000Z");
   assert.equal(logs.some((line) => /private-message-id|private-sender-id|private message body|ops@g\.us/.test(line)), false);
 });
 
