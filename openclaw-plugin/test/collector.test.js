@@ -63,6 +63,21 @@ test("matches the allowlisted group from the typed event from field", async () =
   assert.match(logs.find((line) => line.startsWith("Ajudan capture status:")), /storedMessages=1/);
 });
 
+test("logs privacy-safe diagnostics when only the hook context matches an allowlisted group", async () => {
+  const { api, hooks, logs } = apiFor({ groupIds: ["ops@g.us"], inferenceEnabled: false });
+  register(api);
+  await hooks.get("message_received")({
+    from: "private-sender-id",
+    messageId: "private-message-id",
+    senderId: "private-sender-id",
+    timestamp: 1700000000000,
+    content: "private message body",
+  }, { channelId: "whatsapp", conversationId: "ops@g.us" });
+
+  assert.match(logs[0], /Ajudan capture diagnostic: fromMatch=false conversationMatch=true messageIdValid=true timestampValid=true senderIdPresent=true contentValid=true replyToValid=true stored=false/);
+  assert.doesNotMatch(logs.join(" "), /private-sender-id|private-message-id|private message body|ops@g\.us/);
+});
+
 test("claims allowlisted WhatsApp messages before agent dispatch", async () => {
   const { api, hooks } = apiFor({ groupIds: ["ops@g.us"] });
   register(api);
