@@ -36,9 +36,9 @@ test("collects only allowlisted WhatsApp group events and registers no collectio
   register(api);
   const received = hooks.get("message_received");
   for (const [event, context] of [
-    [{ from: "u1", threadId: "ops@g.us", messageId: "1", senderId: "u1", timestamp: 1000, content: "kept" }, { channelId: "whatsapp" }],
-    [{ from: "u1", threadId: "other@g.us", messageId: "2", senderId: "u1", timestamp: 1000, content: "ignored" }, { channelId: "whatsapp" }],
-    [{ from: "u1", threadId: "ops@g.us", messageId: "3", senderId: "u1", timestamp: 1000, content: "ignored" }, { channelId: "telegram" }],
+    [{ from: "ops@g.us", threadId: "thread-1", messageId: "1", senderId: "u1", timestamp: 1000, content: "kept" }, { channelId: "whatsapp" }],
+    [{ from: "other@g.us", threadId: "thread-2", messageId: "2", senderId: "u1", timestamp: 1000, content: "ignored" }, { channelId: "whatsapp" }],
+    [{ from: "ops@g.us", threadId: "thread-3", messageId: "3", senderId: "u1", timestamp: 1000, content: "ignored" }, { channelId: "telegram" }],
   ]) await received(event, context);
 
   assert.equal(services.length, 1);
@@ -47,12 +47,12 @@ test("collects only allowlisted WhatsApp group events and registers no collectio
   assert.equal(schedules, 0);
 });
 
-test("matches the allowlisted group using the typed event threadId", async () => {
+test("matches the allowlisted group from the typed event from field", async () => {
   const { api, hooks, services, logs } = apiFor({ groupIds: ["ops@g.us"], inferenceEnabled: false });
   register(api);
   await hooks.get("message_received")({
-    from: "sender@s.whatsapp.net",
-    threadId: "ops@g.us",
+    from: "ops@g.us",
+    threadId: "thread-1",
     messageId: "m1",
     senderId: "sender@s.whatsapp.net",
     timestamp: 1700000000000,
@@ -63,19 +63,23 @@ test("matches the allowlisted group using the typed event threadId", async () =>
   assert.match(logs.find((line) => line.startsWith("Ajudan capture status:")), /storedMessages=1/);
 });
 
-test("logs only allowlist-match and field-validity diagnostics for WhatsApp events", async () => {
-  const { api, hooks, logs } = apiFor({ groupIds: ["ops@g.us"] });
+test("claims allowlisted WhatsApp messages before agent dispatch", async () => {
+  const { api, hooks } = apiFor({ groupIds: ["ops@g.us"] });
   register(api);
-  await hooks.get("message_received")({
-    from: "sender@s.whatsapp.net",
-    messageId: "m1",
-    senderId: "sender@s.whatsapp.net",
-    timestamp: 1700000000000,
-    content: "private message body",
-  }, { channelId: "whatsapp", conversationId: "ops@g.us" });
+  const beforeDispatch = hooks.get("before_dispatch");
 
-  assert.match(logs[0], /channelMatch=true fromMatch=false threadIdType=undefined threadIdMatch=false conversationIdMatch=true messageIdPresent=true timestampValid=true senderIdPresent=true/);
-  assert.doesNotMatch(logs[0], /private message body|ops@g\.us|sender@s\.whatsapp\.net|m1/);
+  assert.deepEqual(await beforeDispatch({ channel: "whatsapp" }, {
+    channelId: "whatsapp",
+    conversationId: "ops@g.us",
+  }), { handled: true });
+  assert.equal(await beforeDispatch({ channel: "whatsapp" }, {
+    channelId: "whatsapp",
+    conversationId: "other@g.us",
+  }), undefined);
+  assert.equal(await beforeDispatch({ channel: "telegram" }, {
+    channelId: "telegram",
+    conversationId: "ops@g.us",
+  }), undefined);
 });
 
 test("empty or wildcard group configuration registers no capture hook", () => {
@@ -90,8 +94,8 @@ test("logs only stored message count and latest timestamp on service startup", a
   const { api, hooks, services, logs } = apiFor({ groupIds: ["ops@g.us"], inferenceEnabled: false });
   register(api);
   await hooks.get("message_received")({
-    from: "sender@s.whatsapp.net",
-    threadId: "ops@g.us",
+    from: "ops@g.us",
+    threadId: "thread-1",
     messageId: "private-message-id",
     senderId: "private-sender-id",
     timestamp: 1700000000000,

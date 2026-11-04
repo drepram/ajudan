@@ -28,17 +28,12 @@ export function register(api) {
   const store = createStore({ messages, state, groupIds, retentionDays });
 
   api.on("message_received", async (event, context) => {
-    if (context.channelId === "whatsapp") {
-      const timestamp = Number(event.timestamp);
-      const conversationId = context.conversationId;
-      api.logger.info(`Ajudan capture diagnostic: channelMatch=true fromMatch=${groupIds.includes(event.from)} threadIdType=${typeof event.threadId} threadIdMatch=${typeof event.threadId === "string" && groupIds.includes(event.threadId)} conversationIdMatch=${typeof conversationId === "string" && groupIds.includes(conversationId)} messageIdPresent=${Boolean(event.messageId)} timestampValid=${Number.isSafeInteger(timestamp) && timestamp > 0} senderIdPresent=${typeof event.senderId === "string" && event.senderId.length > 0}`);
-    }
-    if (context.channelId !== "whatsapp" || typeof event.threadId !== "string" || !groupIds.includes(event.threadId) || !event.messageId) return;
+    if (context.channelId !== "whatsapp" || !groupIds.includes(event.from) || !event.messageId) return;
     const timestamp = Number(event.timestamp);
     if (!Number.isSafeInteger(timestamp) || timestamp <= 0) return;
     try {
       await store.record({
-        groupId: event.threadId,
+        groupId: event.from,
         messageId: event.messageId,
         senderId: event.senderId,
         timestamp,
@@ -47,6 +42,12 @@ export function register(api) {
       });
     } catch (error) {
       api.logger.error("Ajudan message capture failed");
+    }
+  });
+
+  api.on("before_dispatch", (_event, context) => {
+    if (context.channelId === "whatsapp" && groupIds.includes(context.conversationId)) {
+      return { handled: true };
     }
   });
 
