@@ -15,7 +15,8 @@ export function createStore({ messages, state, groupIds, retentionDays }) {
     async record(message) {
       if (!allowedGroups.has(message.groupId) ||
           typeof message.messageId !== "string" || !message.messageId ||
-          typeof message.senderId !== "string" || !Number.isSafeInteger(message.timestamp) ||
+          (message.senderId !== undefined && typeof message.senderId !== "string") ||
+          !Number.isSafeInteger(message.timestamp) ||
           typeof message.text !== "string" || message.text.length > MAX_MESSAGE_CHARS ||
           (message.replyTo !== null && typeof message.replyTo !== "string")) {
         return false;

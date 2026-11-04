@@ -50,6 +50,21 @@ test("records only valid messages once and reads a sorted group window", async (
   assert.deepEqual(await store.getSummary(), { count: 2, latestTimestamp: 2000 });
 });
 
+test("records valid messages when OpenClaw omits the optional sender ID", async () => {
+  const messages = keyedStore();
+  const store = createStore({ messages, state: keyedStore(), groupIds: ["ops@g.us"], retentionDays: 7 });
+  const message = {
+    groupId: "ops@g.us",
+    messageId: "m-no-sender",
+    timestamp: 2000,
+    text: "valid message",
+    replyTo: null,
+  };
+
+  assert.equal(await store.record(message), true);
+  assert.deepEqual(await store.readWindow({ groupIds: ["ops@g.us"], from: 1000, to: 3000 }), [message]);
+});
+
 test("summarizes an empty store", async () => {
   const store = createStore({ messages: keyedStore(), state: keyedStore(), groupIds: [], retentionDays: 7 });
   assert.deepEqual(await store.getSummary(), { count: 0, latestTimestamp: undefined });
